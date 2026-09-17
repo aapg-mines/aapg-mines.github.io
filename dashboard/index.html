@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AAPG Mines — Attendance Dashboard</title>
+<meta name="theme-color" content="#16233d">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23014871'/%3E%3Ctext x='32' y='41' font-family='Helvetica,Arial' font-size='19' font-weight='bold' fill='white' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    color-scheme: light;
+    --navy: #16233d;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --line: #e1e0d9;
+    --bg: #f9f9f7;
+    --card: #fcfcfb;
+    --accent: #c8882a;
+    --s1: #2a78d6;   /* returning */
+    --s2: #eb6834;   /* new */
+    --good: #0ca30c;
+    --crit: #d03b3b;
+    --ring: rgba(11,11,11,.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --navy: #c9d6ee;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --line: #2c2c2a;
+      --bg: #0d0d0d;
+      --card: #191f28;
+      --s1: #3987e5;
+      --s2: #d95926;
+      --good: #0ca30c;
+      --ring: rgba(255,255,255,.10);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .page { max-width: 1060px; margin: 0 auto; padding: 0 16px 64px; }
+
+  /* Gate */
+  .gate { max-width: 380px; margin: 14vh auto; text-align: center; }
+  .gate .mark {
+    width: 54px; height: 54px; border-radius: 14px; background: #16233d; color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 15px; margin-bottom: 16px;
+  }
+  .gate h1 { font-size: 20px; margin: 0 0 6px; }
+  .gate p { color: var(--ink-2); font-size: 14px; margin: 0 0 22px; }
+
+  header.top {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+    padding: 26px 0 16px;
+  }
+  header.top h1 { font-size: 21px; margin: 0; letter-spacing: -.015em; }
+  header.top .term { color: var(--muted); font-size: 13.5px; }
+
+  nav.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 22px; flex-wrap: wrap; }
+  nav.tabs button {
+    background: none; border: 0; border-bottom: 2px solid transparent;
+    font: inherit; font-weight: 550; font-size: 14.5px;
+    color: var(--muted); padding: 10px 14px; cursor: pointer; margin-bottom: -1px;
+  }
+  nav.tabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px;
+  }
+  .card + .card { margin-top: 16px; }
+  .card h2 { font-size: 15px; margin: 0 0 14px; font-weight: 650; }
+  .card h2 .hint { font-weight: 400; color: var(--muted); font-size: 13px; margin-left: 8px; }
+
+  /* Stat tiles */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 15px 16px; }
+  .tile .v { font-size: 30px; font-weight: 680; letter-spacing: -.03em; line-height: 1.1; }
+  .tile .k { color: var(--muted); font-size: 12.5px; margin-top: 5px; }
+
+  /* Forms */
+  label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-2); margin: 0 0 5px; }
+  input, select, textarea {
+    width: 100%; font: inherit; font-size: 14.5px; padding: 9px 11px;
+    border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--ink);
+  }
+  input:focus, select:focus { outline: 2px solid var(--s1); outline-offset: 1px; }
+  .grid { display: grid; gap: 12px; }
+  .g4 { grid-template-columns: 140px 1fr 170px auto; align-items: end; }
+  .g2 { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 720px) { .g4, .g2 { grid-template-columns: 1fr; } }
+
+  button.btn {
+    font: inherit; font-weight: 600; font-size: 14.5px;
+    padding: 9px 16px; border: 0; border-radius: 8px;
+    background: #16233d; color: #fff; cursor: pointer; white-space: nowrap;
+  }
+  @media (prefers-color-scheme: dark) { button.btn { background: #3987e5; } }
+  button.btn.sec { background: transparent; color: var(--ink-2); border: 1px solid var(--line); }
+  button.btn.danger { background: transparent; color: var(--crit); border: 1px solid var(--line); }
+  button.btn[disabled] { opacity: .5; cursor: default; }
+  button.mini { font-size: 12.5px; padding: 5px 10px; border-radius: 6px; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Tables */
+  .tw { overflow-x: auto; margin: 0 -18px; padding: 0 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  th, td.num, td.nowrap { white-space: nowrap; }
+  th { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; cursor: pointer; user-select: none; }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:hover { background: color-mix(in srgb, var(--s1) 6%, transparent); }
+  td.name { font-weight: 550; }
+  td.sub { color: var(--muted); font-size: 13px; }
+
+  .pill { display: inline-block; font-size: 11.5px; font-weight: 650; padding: 3px 9px; border-radius: 999px; background: var(--line); color: var(--ink-2); }
+  .pill.good { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+  .pill.live { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); }
+
+  .empty { color: var(--muted); font-size: 14px; padding: 18px 0; text-align: center; }
+  .msg { font-size: 13.5px; margin-top: 10px; }
+  .msg.err { color: var(--crit); }
+  .msg.ok { color: var(--good); }
+
+  /* Chart */
+  .legend { display: flex; gap: 16px; font-size: 13px; color: var(--ink-2); margin-bottom: 10px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .chart { position: relative; }
+  .chart svg { width: 100%; display: block; overflow: visible; }
+  .tip {
+    position: absolute; pointer-events: none; opacity: 0;
+    background: var(--ink); color: var(--bg);
+    font-size: 12.5px; line-height: 1.45; padding: 7px 10px; border-radius: 7px;
+    transform: translate(-50%, -100%); white-space: nowrap; transition: opacity .1s;
+    z-index: 5;
+  }
+  .tip b { font-weight: 650; }
+
+  /* Modal */
+  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 40; }
+  .scrim.on { display: flex; }
+  .modal { background: var(--card); border-radius: 14px; padding: 20px; max-width: 560px; width: 100%; max-height: 84vh; overflow: auto; }
+  .modal h3 { margin: 0 0 4px; font-size: 16px; }
+  .modal p.s { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+  textarea.csv { font-family: ui-monospace, Menlo, monospace; font-size: 12px; height: 200px; white-space: pre; }
+  .urlbox { display: flex; gap: 8px; align-items: center; }
+  .urlbox input { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; }
+</style>
+</head>
+<body>
+
+<!-- Passcode gate -->
+<div id="gate" class="gate">
+  <div class="mark">AAPG</div>
+  <h1 id="gate-h">Officer dashboard</h1>
+  <p id="gate-p">Enter the dashboard passcode.</p>
+  <input id="pass" type="password" placeholder="Passcode" autocomplete="current-password">
+  <div style="height:12px"></div>
+  <button class="btn" id="gate-go" style="width:100%">Open dashboard</button>
+  <div class="msg err" id="gate-err" style="display:none"></div>
+</div>
+
+<!-- App -->
+<div class="page" id="app" hidden>
+  <header class="top">
+    <div>
+      <h1 id="h-chapter"></h1>
+      <div class="term" id="h-term"></div>
+    </div>
+    <div class="actions">
+      <button class="btn sec mini" id="btn-links">Check-in link</button>
+      <button class="btn sec mini" id="btn-refresh">Refresh</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button data-tab="overview" class="on">Overview</button>
+    <button data-tab="meetings">Meetings</button>
+    <button data-tab="roster">Roster</button>
+    <button data-tab="settings">Settings</button>
+  </nav>
+
+  <!-- OVERVIEW -->
+  <section id="t-overview">
+    <div class="tiles" id="tiles"></div>
+    <div class="card">
+      <h2>Attendance by meeting <span class="hint" id="chart-hint"></span></h2>
+      <div class="legend">
+        <span><i style="background:var(--s1)"></i> Returning</span>
+        <span><i style="background:var(--s2)"></i> First-time</span>
+      </div>
+      <div class="chart" id="chart"></div>
+    </div>
+  </section>
+
+  <!-- MEETINGS -->
+  <section id="t-meetings" hidden>
+    <div class="card">
+      <h2>Add a meeting</h2>
+      <div class="grid g4">
+        <div><label for="m-date">Date</label><input id="m-date" type="date"></div>
+        <div><label for="m-title">Title</label><input id="m-title" placeholder="Devon Energy — Permian Basin"></div>
+        <div><label for="m-type">Type</label><select id="m-type"></select></div>
+        <div><button class="btn" id="m-add">Add meeting</button></div>
+      </div>
+      <div class="msg" id="m-msg"></div>
+    </div>
+    <div class="card">
+      <h2>Meetings <span class="hint">Click a row to see and edit who attended</span></h2>
+      <div class="tw"><table id="tbl-meetings"></table></div>
+    </div>
+  </section>
+
+  <!-- ROSTER -->
+  <section id="t-roster" hidden>
+    <div class="card">
+      <h2>Roster <span class="hint" id="roster-hint"></span></h2>
+      <div class="actions" style="margin-bottom:14px">
+        <button class="btn sec mini" id="btn-export-roster">Export roster CSV</button>
+        <button class="btn sec mini" id="btn-export-raw">Export raw check-ins CSV</button>
+      </div>
+      <div class="tw"><table id="tbl-roster"></table></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="t-settings" hidden>
+    <div class="card">
+      <h2>Chapter settings</h2>
+      <div class="grid g2">
+        <div><label for="s-chapter">Chapter name</label><input id="s-chapter"></div>
+        <div><label for="s-term">Current term</label><input id="s-term" placeholder="Fall 2026"></div>
+        <div>
+          <label for="s-thresh">Active member threshold (% of meetings held)</label>
+          <input id="s-thresh" type="number" min="0" max="100" step="5">
+        </div>
+        <div>
+          <label for="s-override">Force check-in open for</label>
+          <select id="s-override"></select>
+        </div>
+      </div>
+      <div style="margin-top:14px" class="actions">
+        <button class="btn" id="s-save">Save settings</button>
+      </div>
+      <div class="msg" id="s-msg"></div>
+    </div>
+    <div class="card">
+      <h2>Change passcode</h2>
+      <div class="grid g2">
+        <div><label for="p-new">New passcode</label><input id="p-new" type="password"></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn sec" id="p-save">Update passcode</button></div>
+      </div>
+      <div class="msg" id="p-msg"></div>
+    </div>
+  </section>
+</div>
+
+<!-- Modal -->
+<div class="scrim" id="scrim"><div class="modal" id="modal"></div></div>
+
+<script>
+var PASS = '';
+var D = null;                 // dashboard payload
+var sortState = { roster: { key: 'pct', dir: -1 } };
+/* ------------------------------------------------------------------ *
+ * google.script.run shim
+ *
+ * This page used to be served by Apps Script, where google.script.run
+ * called server functions directly. It now lives on GitHub Pages, so the
+ * same calls go over the JSON endpoint instead. Emulating the old API
+ * means none of the dashboard logic below had to change.
+ *
+ * One detail worth preserving: api_getDashboard and api_changePasscode
+ * used to THROW on a bad passcode, which fired withFailureHandler. The
+ * endpoint returns { badPasscode: true } instead, so the shim routes that
+ * to the failure handler to keep the gate behaving exactly as before.
+ * ------------------------------------------------------------------ */
+var API = "https://script.google.com/macros/s/AKfycbylvTtEErgTYNkqHl6Fyi8pC16VCpdYshpL76-zbTyXIwdP10-PmF-9PlpxUdQer999/exec";
+var WEB_URL = "https://aapg-mines.github.io/checkin/";
+var DASH_URL = "https://aapg-mines.github.io/dashboard/";
+
+var ACTION_MAP = {
+  api_dashboardStatus:    function ()             { return ['status', {}]; },
+  api_setInitialPasscode: function (v)            { return ['setPasscode', { newPasscode: v }]; },
+  api_getDashboard:       function (p)            { return ['dashboard', { passcode: p }]; },
+  api_changePasscode:     function (p, n)         { return ['changePass', { passcode: p, newPasscode: n }]; },
+  api_addMeeting:         function (p, m)         { return ['addMeeting', { passcode: p, meeting: m }]; },
+  api_updateMeeting:      function (p, m)         { return ['updateMeeting', { passcode: p, meeting: m }]; },
+  api_deleteMeeting:      function (p, id)        { return ['deleteMeeting', { passcode: p, meetingId: id }]; },
+  api_manualCheckIn:      function (p, mid, em)   { return ['manualCheckIn', { passcode: p, meetingId: mid, email: em }]; },
+  api_removeCheckIn:      function (p, mid, em)   { return ['removeCheckIn', { passcode: p, meetingId: mid, email: em }]; },
+  api_updateMember:       function (p, m)         { return ['updateMember', { passcode: p, member: m }]; },
+  api_deleteMember:       function (p, em)        { return ['deleteMember', { passcode: p, email: em }]; },
+  api_saveSettings:       function (p, s)         { return ['saveSettings', { passcode: p, settings: s }]; },
+  api_bulkImport:         function (p, mid, t, d) { return ['bulkImport', { passcode: p, meetingId: mid, text: t, dryRun: d }]; }
+};
+
+/* text/plain keeps this a CORS simple request, so no preflight is sent. */
+function apiCall(action, payload) {
+  return fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ action: action }, payload))
+  }).then(function (r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+
+function Runner() { this._ok = null; this._fail = null; }
+Runner.prototype.withSuccessHandler = function (f) { this._ok = f; return this; };
+Runner.prototype.withFailureHandler = function (f) { this._fail = f; return this; };
+Object.keys(ACTION_MAP).forEach(function (name) {
+  Runner.prototype[name] = function () {
+    var self = this;
+    var spec = ACTION_MAP[name].apply(null, arguments);
+    apiCall(spec[0], spec[1]).then(function (res) {
+      if (res && res.badPasscode) {
+        if (self._fail) self._fail(new Error('BAD_PASSCODE'));
+        else if (self._ok) self._ok(res);
+        return;
+      }
+      if (self._ok) self._ok(res);
+    }).catch(function (e) {
+      if (self._fail) self._fail(e);
+    });
+  };
+});
+
+var google = { script: { run: new Proxy({}, { get: function (t, k) {
+  var r = new Runner();
+  return typeof r[k] === 'function' ? r[k].bind(r) : undefined;
+}}) } };
+
+function $(id) { return document.getElementById(id); }
+function el(tag, cls, text) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined && text !== null) n.textContent = String(text);
+  return n;
+}
+function msg(id, text, kind) {
+  var n = $(id);
+  n.textContent = text || '';
+  n.className = 'msg' + (kind ? ' ' + kind : '');
+}
+
+/* ------------------------- gate ------------------------- */
+
+google.script.run.withSuccessHandler(function (s) {
+  if (!s.passcodeSet) {
+    $('gate-h').textContent = 'Set up your dashboard';
+    $('gate-p').textContent = 'Choose a passcode. You will use it to open this dashboard from any device.';
+    $('pass').placeholder = 'New passcode (4+ characters)';
+    $('gate-go').textContent = 'Set passcode';
+    $('gate-go').dataset.mode = 'set';
+  }
+  var saved = sessionStorage.getItem('aapg_pass');
+  if (saved && s.passcodeSet) { PASS = saved; load(); }
+}).api_dashboardStatus();
+
+$('pass').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('gate-go').click(); });
+$('gate-go').onclick = function () {
+  var v = $('pass').value;
+  $('gate-err').style.display = 'none';
+  if ($('gate-go').dataset.mode === 'set') {
+    google.script.run.withSuccessHandler(function (r) {
+      if (!r.ok) { gateErr(r.error); return; }
+      PASS = v; sessionStorage.setItem('aapg_pass', v); load();
+    }).api_setInitialPasscode(v);
+  } else {
+    PASS = v;
+    google.script.run
+      .withSuccessHandler(function (d) { sessionStorage.setItem('aapg_pass', v); render(d); })
+      .withFailureHandler(function () { PASS = ''; gateErr('That passcode did not work.'); })
+      .api_getDashboard(v);
+  }
+};
+function gateErr(t) {
+  var n = $('gate-err');
+  n.textContent = t; n.style.display = 'block';
+}
+
+function load() {
+  google.script.run
+    .withSuccessHandler(render)
+    .withFailureHandler(function () {
+      PASS = ''; sessionStorage.removeItem('aapg_pass');
+      $('app').hidden = true; $('gate').style.display = '';
+      gateErr('Session expired — please enter the passcode again.');
+    })
+    .api_getDashboard(PASS);
+}
+$('btn-refresh').onclick = load;
+
+/* ------------------------- derive ------------------------- */
+
+function derive(d) {
+  var byMeeting = {};
+  d.meetings.forEach(function (m) { byMeeting[m.id] = []; });
+  d.checkins.forEach(function (c) { if (byMeeting[c.meetingId]) byMeeting[c.meetingId].push(c); });
+
+  var held = d.meetings.filter(function (m) { return m.held; });
+  var heldIds = {};
+  held.forEach(function (m) { heldIds[m.id] = true; });
+
+  // First-ever meeting date per member, to split new vs returning per meeting.
+  var firstSeen = {};
+  held.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }).forEach(function (m) {
+    byMeeting[m.id].forEach(function (c) {
+      if (!(c.email in firstSeen)) firstSeen[c.email] = m.id;
+    });
+  });
+
+  var memberStats = d.members.map(function (mem) {
+    var attended = d.checkins.filter(function (c) {
+      return c.email === mem.email && heldIds[c.meetingId];
+    }).length;
+    var pct = held.length ? Math.round((attended / held.length) * 100) : 0;
+    return {
+      email: mem.email, name: mem.name, level: mem.level, department: mem.department,
+      attended: attended, pct: pct, active: pct >= d.config.activeThresholdPct
+    };
+  });
+
+  return { byMeeting: byMeeting, held: held, heldIds: heldIds, firstSeen: firstSeen, memberStats: memberStats };
+}
+
+function render(d) {
+  D = d;
+  D.x = derive(d);
+  $('gate').style.display = 'none';
+  $('app').hidden = false;
+  $('h-chapter').textContent = d.config.chapterName;
+  $('h-term').textContent = d.config.currentTerm + ' · ' + D.x.held.length + ' meetings held · ' +
+    d.members.length + ' people on the roster';
+  renderTiles(); renderChart(); renderMeetings(); renderRoster(); renderSettings();
+}
+
+/* ------------------------- tabs ------------------------- */
+
+document.querySelectorAll('nav.tabs button').forEach(function (b) {
+  b.onclick = function () {
+    document.querySelectorAll('nav.tabs button').forEach(function (x) { x.classList.remove('on'); });
+    b.classList.add('on');
+    ['overview', 'meetings', 'roster', 'settings'].forEach(function (t) {
+      $('t-' + t).hidden = (t !== b.dataset.tab);
+    });
+  };
+});
+
+/* ------------------------- overview ------------------------- */
+
+function renderTiles() {
+  var x = D.x;
+  var counts = x.held.map(function (m) { return x.byMeeting[m.id].length; });
+  var avg = counts.length ? Math.round(counts.reduce(function (a, b) { return a + b; }, 0) / counts.length) : 0;
+  var activeCount = x.memberStats.filter(function (m) { return m.active; }).length;
+  var attendedAny = x.memberStats.filter(function (m) { return m.attended > 0; }).length;
+
+  var tiles = [
+    [x.held.length, 'meetings held'],
+    [attendedAny, 'people have attended'],
+    [avg, 'average turnout'],
+    [activeCount, 'active members (≥' + D.config.activeThresholdPct + '%)']
+  ];
+  var wrap = $('tiles');
+  wrap.innerHTML = '';
+  tiles.forEach(function (t) {
+    var c = el('div', 'tile');
+    c.appendChild(el('div', 'v', t[0]));
+    c.appendChild(el('div', 'k', t[1]));
+    wrap.appendChild(c);
+  });
+}
+
+function renderChart() {
+  var x = D.x, host = $('chart');
+  host.innerHTML = '';
+  var data = x.held.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+
+  if (!data.length) {
+    host.appendChild(el('div', 'empty', 'No meetings have happened yet. Add one under the Meetings tab.'));
+    $('chart-hint').textContent = '';
+    return;
+  }
+  $('chart-hint').textContent = 'first-time attendees are people whose first ever check-in was that meeting';
+
+  var series = data.map(function (m) {
+    var cs = x.byMeeting[m.id];
+    var nw = cs.filter(function (c) { return x.firstSeen[c.email] === m.id; }).length;
+    return { m: m, total: cs.length, nw: nw, ret: cs.length - nw };
+  });
+
+  var W = Math.max(320, host.clientWidth || 640), H = 260;
+  var padL = 30, padR = 8, padT = 12, padB = 46;
+  var plotW = W - padL - padR, plotH = H - padT - padB;
+  // Round the axis up to a value that divides into whole-number ticks.
+  var rawMax = Math.max(4, Math.max.apply(null, series.map(function (s) { return s.total; })));
+  var ticks = 4;
+  var stepUnit = [1, 2, 5, 10, 20, 25, 50, 100].filter(function (u) { return u * ticks >= rawMax; })[0] || 200;
+  var maxV = stepUnit * ticks;
+  var step = plotW / series.length;
+  var bw = Math.min(46, Math.max(10, step * 0.6));
+
+  var NS = 'http://www.w3.org/2000/svg';
+  var svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.setAttribute('role', 'img');
+
+  function line(x1, y1, x2, y2, stroke) {
+    var l = document.createElementNS(NS, 'line');
+    l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+    l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+    l.setAttribute('stroke', stroke); l.setAttribute('stroke-width', 1);
+    svg.appendChild(l);
+  }
+  function text(x, y, str, anchor, fill, size) {
+    var t = document.createElementNS(NS, 'text');
+    t.setAttribute('x', x); t.setAttribute('y', y);
+    t.setAttribute('text-anchor', anchor || 'middle');
+    t.setAttribute('fill', fill || 'var(--muted)');
+    t.setAttribute('font-size', size || 11);
+    t.textContent = str;
+    svg.appendChild(t);
+  }
+
+  // Gridlines + y ticks
+  for (var i = 0; i <= ticks; i++) {
+    var v = Math.round(maxV * i / ticks);
+    var y = padT + plotH - (v / maxV) * plotH;
+    line(padL, y, W - padR, y, i === 0 ? 'var(--line)' : 'var(--line)');
+    text(padL - 8, y + 4, v, 'end');
+  }
+
+  var tip = el('div', 'tip');
+  host.appendChild(tip);
+
+  series.forEach(function (s, i) {
+    var cx = padL + step * i + step / 2;
+    var x0 = cx - bw / 2;
+    var hTotal = (s.total / maxV) * plotH;
+    var hNew = (s.nw / maxV) * plotH;
+    var hRet = hTotal - hNew;
+    var yTop = padT + plotH - hTotal;
+
+    // returning (bottom, anchored to baseline, rounded bottom is flat)
+    if (hRet > 0) {
+      var r1 = document.createElementNS(NS, 'rect');
+      r1.setAttribute('x', x0); r1.setAttribute('y', padT + plotH - hRet);
+      r1.setAttribute('width', bw); r1.setAttribute('height', hRet);
+      r1.setAttribute('fill', 'var(--s1)');
+      svg.appendChild(r1);
+    }
+    // new (top), 2px surface gap between segments, 4px rounded data-end
+    if (hNew > 0) {
+      var gap = hRet > 0 ? 2 : 0;
+      var r2 = document.createElementNS(NS, 'rect');
+      r2.setAttribute('x', x0); r2.setAttribute('y', yTop);
+      r2.setAttribute('width', bw); r2.setAttribute('height', Math.max(1, hNew - gap));
+      r2.setAttribute('fill', 'var(--s2)');
+      r2.setAttribute('rx', 4);
+      svg.appendChild(r2);
+    } else if (hRet > 0) {
+      svg.lastChild.setAttribute('rx', 4);
+    }
+
+    // value label above the bar
+    text(cx, yTop - 6, s.total, 'middle', 'var(--ink-2)', 11.5);
+
+    // x label: short date
+    var parts = s.m.date.split('-');
+    text(cx, padT + plotH + 16, parts[1] + '/' + parts[2], 'middle');
+    var short = s.m.title.length > 14 ? s.m.title.slice(0, 13) + '…' : s.m.title;
+    text(cx, padT + plotH + 30, short, 'middle');
+
+    // hover target, wider than the bar
+    var hit = document.createElementNS(NS, 'rect');
+    hit.setAttribute('x', padL + step * i); hit.setAttribute('y', padT);
+    hit.setAttribute('width', step); hit.setAttribute('height', plotH);
+    hit.setAttribute('fill', 'transparent');
+    hit.style.cursor = 'default';
+    hit.addEventListener('mouseenter', function () {
+      tip.innerHTML = '';
+      tip.appendChild(el('div', null, s.m.title));
+      var b = el('div');
+      b.innerHTML = '<b>' + s.total + '</b> attended · ' + s.ret + ' returning, ' + s.nw + ' first-time';
+      tip.appendChild(b);
+      tip.style.left = (cx / W * 100) + '%';
+      tip.style.top = (yTop - 10) + 'px';
+      tip.style.opacity = 1;
+    });
+    hit.addEventListener('mouseleave', function () { tip.style.opacity = 0; });
+    svg.appendChild(hit);
+  });
+
+  // baseline
+  line(padL, padT + plotH, W - padR, padT + plotH, 'var(--muted)');
+  host.insertBefore(svg, tip);
+}
+
+/* ------------------------- meetings ------------------------- */
+
+function renderMeetings() {
+  var sel = $('m-type');
+  if (!sel.options.length) {
+    D.meetingTypes.forEach(function (t) {
+      var o = el('option', null, t);
+      if (t === 'Company Talk') o.selected = true;
+      sel.appendChild(o);
+    });
+  }
+  if (!$('m-date').value) $('m-date').value = D.today;
+
+  var tbl = $('tbl-meetings');
+  tbl.innerHTML = '';
+  var head = el('tr');
+  ['Date', 'Meeting', 'Type', 'Term', 'Attended', ''].forEach(function (h, i) {
+    var th = el('th', i === 4 ? 'num' : null, h);
+    th.style.cursor = 'default';
+    head.appendChild(th);
+  });
+  var thead = el('thead'); thead.appendChild(head); tbl.appendChild(thead);
+
+  var tb = el('tbody');
+  var rows = D.meetings.slice().sort(function (a, b) { return a.date > b.date ? -1 : 1; });
+  if (!rows.length) {
+    var tr0 = el('tr'); var td0 = el('td', 'empty', 'No meetings yet.');
+    td0.colSpan = 6; tr0.appendChild(td0); tb.appendChild(tr0);
+  }
+  rows.forEach(function (m) {
+    var tr = el('tr');
+    tr.style.cursor = 'pointer';
+    tr.onclick = function (e) { if (e.target.tagName !== 'BUTTON') openMeeting(m); };
+    tr.appendChild(el('td', 'sub', m.date));
+    var tdn = el('td', 'name', m.title);
+    if (D.config.activeMeetingOverride === m.id) {
+      tdn.appendChild(document.createTextNode(' '));
+      tdn.appendChild(el('span', 'pill live', 'check-in open'));
+    } else if (m.date === D.today) {
+      tdn.appendChild(document.createTextNode(' '));
+      tdn.appendChild(el('span', 'pill live', 'today'));
+    } else if (!m.held) {
+      tdn.appendChild(document.createTextNode(' '));
+      tdn.appendChild(el('span', 'pill', 'upcoming'));
+    }
+    tr.appendChild(tdn);
+    tr.appendChild(el('td', 'sub', m.type));
+    tr.appendChild(el('td', 'sub', m.term));
+    tr.appendChild(el('td', 'num', D.x.byMeeting[m.id] ? D.x.byMeeting[m.id].length : 0));
+    var tda = el('td');
+    var del = el('button', 'btn danger mini', 'Delete');
+    del.onclick = function (ev) {
+      ev.stopPropagation();
+      confirmModal('Delete "' + m.title + '"?',
+        'This also removes its ' + (D.x.byMeeting[m.id] || []).length + ' check-in records. This cannot be undone.',
+        function () {
+          google.script.run.withSuccessHandler(function () { closeModal(); load(); })
+            .api_deleteMeeting(PASS, m.id);
+        });
+    };
+    tda.appendChild(del);
+    tr.appendChild(tda);
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+}
+
+$('m-add').onclick = function () {
+  var btn = this;
+  btn.disabled = true;
+  msg('m-msg', '');
+  google.script.run.withSuccessHandler(function (r) {
+    btn.disabled = false;
+    if (!r.ok) { msg('m-msg', r.error, 'err'); return; }
+    $('m-title').value = '';
+    msg('m-msg', 'Meeting added.', 'ok');
+    load();
+  }).withFailureHandler(function () {
+    btn.disabled = false; msg('m-msg', 'Could not add the meeting.', 'err');
+  }).api_addMeeting(PASS, {
+    date: $('m-date').value,
+    title: $('m-title').value,
+    type: $('m-type').value,
+    term: D.config.currentTerm
+  });
+};
+
+function openMeeting(m) {
+  var list = (D.x.byMeeting[m.id] || []).slice();
+  var byEmail = {};
+  D.members.forEach(function (x) { byEmail[x.email] = x; });
+
+  var box = el('div');
+  box.appendChild(el('h3', null, m.title));
+  box.appendChild(el('p', 's', m.date + ' · ' + m.type + ' · ' + list.length + ' checked in'));
+
+  // manual add
+  var row = el('div', 'urlbox');
+  var inp = el('input');
+  inp.placeholder = 'add someone by email';
+  inp.type = 'email';
+  var add = el('button', 'btn mini', 'Add');
+  add.onclick = function () {
+    var e = inp.value.trim().toLowerCase();
+    if (!e) return;
+    add.disabled = true;
+    google.script.run.withSuccessHandler(function (r) {
+      add.disabled = false;
+      if (!r.ok) { alertModal('Could not add', r.error); return; }
+      closeModal();
+      load();
+    }).api_manualCheckIn(PASS, m.id, e);
+  };
+  row.appendChild(inp); row.appendChild(add);
+  box.appendChild(row);
+  box.appendChild(el('p', 's', 'Only works for people already on the roster — a brand-new person has to scan in once.'));
+
+  /* ---- backfill from a pasted list ---- */
+  var imp = el('details');
+  imp.style.margin = '4px 0 18px';
+  var sum = el('summary', null, 'Backfill attendance from a list');
+  sum.style.cssText = 'cursor:pointer;font-size:13.5px;font-weight:600;color:var(--ink-2);padding:6px 0;';
+  imp.appendChild(sum);
+
+  imp.appendChild(el('p', 's',
+    'One person per line. Any of these work: just an email; "email, Name"; "Name <email>"; ' +
+    'or columns pasted straight from a spreadsheet (email, name, level, department). ' +
+    'People already on the roster only need an email.'));
+
+  var ta = el('textarea');
+  ta.rows = 6;
+  ta.placeholder = 'jdoe@mines.edu, Jane Doe, Undergraduate, Geophysics\nrsmith@mines.edu, Rob Smith\nalready.a.member@mines.edu';
+  ta.style.cssText = 'font-family:ui-monospace,Menlo,monospace;font-size:12.5px;';
+  imp.appendChild(ta);
+
+  var impActs = el('div', 'actions');
+  impActs.style.marginTop = '10px';
+  var preview = el('button', 'btn sec mini', 'Preview');
+  var confirm = el('button', 'btn mini', 'Import');
+  confirm.style.display = 'none';
+  impActs.appendChild(preview); impActs.appendChild(confirm);
+  imp.appendChild(impActs);
+
+  var out = el('div');
+  out.style.marginTop = '12px';
+  imp.appendChild(out);
+
+  function renderPreview(r) {
+    out.innerHTML = '';
+    if (!r.ok) { out.appendChild(el('div', 'msg err', r.error)); return; }
+
+    var s = r.summary;
+    var line = el('div', 'msg');
+    line.textContent = s.checkIns + ' check-in(s) to add · ' + s.newMembers + ' new member(s) · ' +
+      s.skipped + ' skipped · ' + s.errors + ' problem(s)';
+    out.appendChild(line);
+
+    var t = el('table');
+    t.style.marginTop = '8px';
+    var tbody = el('tbody');
+    r.results.forEach(function (x) {
+      var tr = el('tr');
+      tr.appendChild(el('td', 'name', x.name || x.email || x.raw));
+      tr.appendChild(el('td', 'sub', x.email || x.raw));
+      var td = el('td');
+      var cls = x.status === 'error' ? 'pill' : (x.status === 'skip' ? 'pill' : 'pill good');
+      var label = { 'new': 'add + count', 'checkin': 'count', 'skip': 'skip', 'error': 'problem' }[x.status];
+      var pill = el('span', cls, label);
+      if (x.status === 'error') pill.style.color = 'var(--crit)';
+      td.appendChild(pill);
+      tr.appendChild(td);
+      tr.appendChild(el('td', 'sub', x.note));
+      tbody.appendChild(tr);
+    });
+    t.appendChild(tbody);
+    out.appendChild(t);
+
+    confirm.style.display = (s.checkIns > 0) ? '' : 'none';
+    confirm.textContent = 'Import ' + s.checkIns + ' attendee(s)';
+  }
+
+  preview.onclick = function () {
+    if (!ta.value.trim()) { out.innerHTML = ''; return; }
+    preview.disabled = true; preview.textContent = 'Checking…';
+    google.script.run.withSuccessHandler(function (r) {
+      preview.disabled = false; preview.textContent = 'Preview';
+      renderPreview(r);
+    }).withFailureHandler(function () {
+      preview.disabled = false; preview.textContent = 'Preview';
+      out.innerHTML = '';
+      out.appendChild(el('div', 'msg err', 'Could not read that list.'));
+    }).api_bulkImport(PASS, m.id, ta.value, true);
+  };
+
+  confirm.onclick = function () {
+    confirm.disabled = true; confirm.textContent = 'Importing…';
+    google.script.run.withSuccessHandler(function (r) {
+      confirm.disabled = false;
+      if (!r.ok) { out.appendChild(el('div', 'msg err', r.error)); return; }
+      closeModal(); load();
+    }).withFailureHandler(function () {
+      confirm.disabled = false; confirm.textContent = 'Import';
+      out.appendChild(el('div', 'msg err', 'Import failed — nothing was changed.'));
+    }).api_bulkImport(PASS, m.id, ta.value, false);
+  };
+
+  box.appendChild(imp);
+
+  var tbl = el('table');
+  var tb = el('tbody');
+  list.sort(function (a, b) { return (byEmail[a.email] ? byEmail[a.email].name : a.email) < (byEmail[b.email] ? byEmail[b.email].name : b.email) ? -1 : 1; });
+  if (!list.length) {
+    var tr0 = el('tr'), td0 = el('td', 'empty', 'Nobody checked in.');
+    td0.colSpan = 3; tr0.appendChild(td0); tb.appendChild(tr0);
+  }
+  list.forEach(function (c) {
+    var mem = byEmail[c.email];
+    var tr = el('tr');
+    tr.appendChild(el('td', 'name', mem ? mem.name : c.email));
+    tr.appendChild(el('td', 'sub', c.ts + (c.method === 'manual' ? ' · added by hand' : '')));
+    var td = el('td');
+    var rm = el('button', 'btn danger mini', 'Remove');
+    rm.onclick = function () {
+      rm.disabled = true;
+      google.script.run.withSuccessHandler(function () { closeModal(); load(); })
+        .api_removeCheckIn(PASS, m.id, c.email);
+    };
+    td.appendChild(rm);
+    tr.appendChild(td);
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+  box.appendChild(tbl);
+
+  var close = el('button', 'btn sec', 'Close');
+  close.style.marginTop = '16px';
+  close.onclick = closeModal;
+  box.appendChild(close);
+
+  showModal(box);
+}
+
+/* ------------------------- roster ------------------------- */
+
+function renderRoster() {
+  var tbl = $('tbl-roster');
+  tbl.innerHTML = '';
+  $('roster-hint').textContent = 'out of ' + D.x.held.length + ' meetings held · active at ' +
+    D.config.activeThresholdPct + '% or more';
+
+  var cols = [
+    { k: 'name', t: 'Name' },
+    { k: 'email', t: 'Email' },
+    { k: 'level', t: 'Level' },
+    { k: 'department', t: 'Department' },
+    { k: 'attended', t: 'Attended', num: true },
+    { k: 'pct', t: '%', num: true },
+    { k: 'active', t: 'Status' }
+  ];
+  var head = el('tr');
+  cols.forEach(function (c) {
+    var th = el('th', c.num ? 'num' : null, c.t + (sortState.roster.key === c.k ? (sortState.roster.dir > 0 ? ' ↑' : ' ↓') : ''));
+    th.onclick = function () {
+      var s = sortState.roster;
+      if (s.key === c.k) s.dir = -s.dir; else { s.key = c.k; s.dir = c.num || c.k === 'active' ? -1 : 1; }
+      renderRoster();
+    };
+    head.appendChild(th);
+  });
+  var thAct = el('th', null, '');
+  thAct.style.cursor = 'default';
+  head.appendChild(thAct);
+  var thead = el('thead'); thead.appendChild(head); tbl.appendChild(thead);
+
+  var rows = D.x.memberStats.slice();
+  var s = sortState.roster;
+  rows.sort(function (a, b) {
+    var va = a[s.key], vb = b[s.key];
+    if (typeof va === 'string') { va = va.toLowerCase(); vb = String(vb).toLowerCase(); }
+    return (va < vb ? -1 : va > vb ? 1 : 0) * s.dir;
+  });
+
+  var tb = el('tbody');
+  if (!rows.length) {
+    var tr0 = el('tr'), td0 = el('td', 'empty', 'Nobody has checked in yet.');
+    td0.colSpan = cols.length + 1; tr0.appendChild(td0); tb.appendChild(tr0);
+  }
+  rows.forEach(function (m) {
+    var tr = el('tr');
+    tr.appendChild(el('td', 'name', m.name));
+    tr.appendChild(el('td', 'sub', m.email));
+    tr.appendChild(el('td', 'sub', m.level));
+    tr.appendChild(el('td', 'sub', m.department));
+    tr.appendChild(el('td', 'num', m.attended));
+    tr.appendChild(el('td', 'num', m.pct + '%'));
+    var td = el('td');
+    td.appendChild(el('span', 'pill' + (m.active ? ' good' : ''), m.active ? 'Active' : 'Below'));
+    tr.appendChild(td);
+
+    var tda = el('td', 'nowrap');
+    tda.style.textAlign = 'right';
+    var edit = el('button', 'btn sec mini', 'Edit');
+    edit.style.marginRight = '6px';
+    edit.onclick = function () { editMemberModal(m); };
+    var del = el('button', 'btn danger mini', 'Remove');
+    del.onclick = function () {
+      confirmModal('Remove ' + m.name + ' from the roster?',
+        'This also deletes their ' + m.attended + ' check-in record(s). Use this for duplicates and typos, not for people who stopped coming.',
+        function () {
+          google.script.run.withSuccessHandler(function () { closeModal(); load(); })
+            .api_deleteMember(PASS, m.email);
+        });
+    };
+    tda.appendChild(edit); tda.appendChild(del);
+    tr.appendChild(tda);
+    tb.appendChild(tr);
+  });
+  tbl.appendChild(tb);
+}
+
+function editMemberModal(m) {
+  var box = el('div');
+  box.appendChild(el('h3', null, 'Edit member'));
+  box.appendChild(el('p', 's', 'Fixing a typo in an email keeps their check-in history attached.'));
+
+  function field(labelText, value, type) {
+    var w = el('div');
+    w.style.marginBottom = '12px';
+    w.appendChild(el('label', null, labelText));
+    var i = el('input');
+    i.value = value || '';
+    if (type) i.type = type;
+    w.appendChild(i);
+    box.appendChild(w);
+    return i;
+  }
+  var fName = field('Full name', m.name);
+  var fEmail = field('Email', m.email, 'email');
+  var fLevel = field('Level', m.level);
+  var fDept = field('Department or major', m.department);
+
+  var err = el('div', 'msg err');
+  box.appendChild(err);
+
+  var acts = el('div', 'actions');
+  acts.style.marginTop = '8px';
+  var save = el('button', 'btn', 'Save');
+  save.onclick = function () {
+    var email = fEmail.value.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent = 'That is not a valid email address.'; return; }
+    if (!fName.value.trim()) { err.textContent = 'Name cannot be empty.'; return; }
+    save.disabled = true;
+    google.script.run.withSuccessHandler(function (r) {
+      save.disabled = false;
+      if (!r.ok) { err.textContent = r.error; return; }
+      closeModal(); load();
+    }).withFailureHandler(function () {
+      save.disabled = false; err.textContent = 'Could not save.';
+    }).api_updateMember(PASS, {
+      originalEmail: m.email,
+      email: email,
+      name: fName.value.trim(),
+      level: fLevel.value.trim(),
+      department: fDept.value.trim()
+    });
+  };
+  var cancel = el('button', 'btn sec', 'Cancel');
+  cancel.onclick = closeModal;
+  acts.appendChild(save); acts.appendChild(cancel);
+  box.appendChild(acts);
+  showModal(box);
+}
+
+/* ------------------------- export ------------------------- */
+
+function csvEscape(v) {
+  var s = String(v === undefined || v === null ? '' : v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function toCsv(rows) {
+  return rows.map(function (r) { return r.map(csvEscape).join(','); }).join('\n');
+}
+
+$('btn-export-roster').onclick = function () {
+  var held = D.x.held.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  var header = ['Name', 'Email', 'Level', 'Department', 'Attended', 'MeetingsHeld', 'Percent', 'Active']
+    .concat(held.map(function (m) { return m.date + ' ' + m.title; }));
+  var present = {};
+  D.checkins.forEach(function (c) { present[c.email + '|' + c.meetingId] = true; });
+  var rows = [header].concat(D.x.memberStats.map(function (m) {
+    return [m.name, m.email, m.level, m.department, m.attended, D.x.held.length, m.pct + '%', m.active ? 'Yes' : 'No']
+      .concat(held.map(function (mt) { return present[m.email + '|' + mt.id] ? 'X' : ''; }));
+  }));
+  exportModal('aapg-roster-' + D.config.currentTerm.replace(/\s+/g, '-').toLowerCase() + '.csv', toCsv(rows));
+};
+
+$('btn-export-raw').onclick = function () {
+  var titles = {};
+  D.meetings.forEach(function (m) { titles[m.id] = m; });
+  var names = {};
+  D.members.forEach(function (m) { names[m.email] = m; });
+  var rows = [['Timestamp', 'MeetingDate', 'Meeting', 'Type', 'Term', 'Name', 'Email', 'Level', 'Department', 'Method']];
+  D.checkins.forEach(function (c) {
+    var m = titles[c.meetingId] || {}, p = names[c.email] || {};
+    rows.push([c.ts, m.date || '', m.title || '', m.type || '', m.term || '', p.name || '', c.email, p.level || '', p.department || '', c.method]);
+  });
+  exportModal('aapg-checkins.csv', toCsv(rows));
+};
+
+function exportModal(filename, csv) {
+  var box = el('div');
+  box.appendChild(el('h3', null, 'Export'));
+  box.appendChild(el('p', 's', filename + ' — download it, or copy the text if your browser blocks the download.'));
+  var ta = el('textarea', 'csv');
+  ta.value = csv;
+  ta.readOnly = true;
+  box.appendChild(ta);
+  var acts = el('div', 'actions');
+  acts.style.marginTop = '14px';
+
+  var dl = el('button', 'btn', 'Download');
+  dl.onclick = function () {
+    try {
+      var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    } catch (e) {
+      dl.textContent = 'Download blocked — copy instead';
+    }
+  };
+  var cp = el('button', 'btn sec', 'Copy to clipboard');
+  cp.onclick = function () {
+    ta.select();
+    try { document.execCommand('copy'); cp.textContent = 'Copied'; } catch (e) { cp.textContent = 'Select the text and copy'; }
+  };
+  var cl = el('button', 'btn sec', 'Close');
+  cl.onclick = closeModal;
+  acts.appendChild(dl); acts.appendChild(cp); acts.appendChild(cl);
+  box.appendChild(acts);
+  showModal(box);
+}
+
+/* ------------------------- settings ------------------------- */
+
+function renderSettings() {
+  $('s-chapter').value = D.config.chapterName;
+  $('s-term').value = D.config.currentTerm;
+  $('s-thresh').value = D.config.activeThresholdPct;
+  var sel = $('s-override');
+  sel.innerHTML = '';
+  var none = el('option', null, 'Nothing — use today’s date (normal)');
+  none.value = '';
+  sel.appendChild(none);
+  D.meetings.slice().sort(function (a, b) { return a.date > b.date ? -1 : 1; }).forEach(function (m) {
+    var o = el('option', null, m.date + ' — ' + m.title);
+    o.value = m.id;
+    if (D.config.activeMeetingOverride === m.id) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+$('s-save').onclick = function () {
+  var btn = this; btn.disabled = true; msg('s-msg', '');
+  google.script.run.withSuccessHandler(function (r) {
+    btn.disabled = false;
+    if (!r.ok) { msg('s-msg', r.error, 'err'); return; }
+    msg('s-msg', 'Saved.', 'ok');
+    load();
+  }).withFailureHandler(function () {
+    btn.disabled = false; msg('s-msg', 'Could not save.', 'err');
+  }).api_saveSettings(PASS, {
+    chapterName: $('s-chapter').value,
+    currentTerm: $('s-term').value,
+    activeThresholdPct: $('s-thresh').value,
+    activeMeetingOverride: $('s-override').value
+  });
+};
+
+$('p-save').onclick = function () {
+  var btn = this; btn.disabled = true; msg('p-msg', '');
+  var next = $('p-new').value;
+  google.script.run.withSuccessHandler(function (r) {
+    btn.disabled = false;
+    if (!r.ok) { msg('p-msg', r.error, 'err'); return; }
+    PASS = next; sessionStorage.setItem('aapg_pass', next);
+    $('p-new').value = '';
+    msg('p-msg', 'Passcode updated.', 'ok');
+  }).withFailureHandler(function () {
+    btn.disabled = false; msg('p-msg', 'Could not update the passcode.', 'err');
+  }).api_changePasscode(PASS, next);
+};
+
+/* ------------------------- links & modal ------------------------- */
+
+$('btn-links').onclick = function () {
+  var box = el('div');
+  box.appendChild(el('h3', null, 'Check-in link'));
+  box.appendChild(el('p', 's', 'This is what the QR code points to. Members open it, no login needed.'));
+  var row = el('div', 'urlbox');
+  var inp = el('input');
+  inp.value = WEB_URL;
+  inp.readOnly = true;
+  var cp = el('button', 'btn mini', 'Copy');
+  cp.onclick = function () {
+    inp.select();
+    try { document.execCommand('copy'); cp.textContent = 'Copied'; } catch (e) {}
+  };
+  row.appendChild(inp); row.appendChild(cp);
+  box.appendChild(row);
+  box.appendChild(el('p', 's', 'Dashboard link (keep this one to yourself): ' + DASH_URL));
+  var cl = el('button', 'btn sec', 'Close');
+  cl.onclick = closeModal;
+  box.appendChild(cl);
+  showModal(box);
+};
+
+function showModal(node) {
+  var m = $('modal');
+  m.innerHTML = '';
+  m.appendChild(node);
+  $('scrim').classList.add('on');
+}
+function closeModal() { $('scrim').classList.remove('on'); }
+$('scrim').onclick = function (e) { if (e.target === $('scrim')) closeModal(); };
+
+function confirmModal(title, body, onYes) {
+  var box = el('div');
+  box.appendChild(el('h3', null, title));
+  box.appendChild(el('p', 's', body));
+  var acts = el('div', 'actions');
+  var yes = el('button', 'btn danger', 'Delete');
+  yes.onclick = onYes;
+  var no = el('button', 'btn sec', 'Cancel');
+  no.onclick = closeModal;
+  acts.appendChild(yes); acts.appendChild(no);
+  box.appendChild(acts);
+  showModal(box);
+}
+function alertModal(title, body) {
+  var box = el('div');
+  box.appendChild(el('h3', null, title));
+  box.appendChild(el('p', 's', body));
+  var ok = el('button', 'btn sec', 'Close');
+  ok.onclick = closeModal;
+  box.appendChild(ok);
+  showModal(box);
+}
+
+window.addEventListener('resize', function () { if (D) renderChart(); });
+</script>
+</body>
+</html>
