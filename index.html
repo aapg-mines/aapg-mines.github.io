@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AAPG Mines — Check In</title>
+<meta name="theme-color" content="#014871">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="AAPG Check-In">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23014871'/%3E%3Ctext x='32' y='41' font-family='Helvetica,Arial' font-size='19' font-weight='bold' fill='white' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --navy: #014871;
+    --navy-2: #036394;
+    --green: #75a43a;
+    --green-soft: #eef4e6;
+    --ink: #14181f;
+    --muted: #5d6675;
+    --line: #e2e5ea;
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --ok: #1d7a4f;
+    --err: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --navy: #3f8fc4;
+      --navy-2: #67a9d6;
+      --green: #8dbd52;
+      --green-soft: #22301a;
+      --ink: #eef1f5;
+      --muted: #9aa3b2;
+      --line: #2c3442;
+      --bg: #11151c;
+      --card: #191f28;
+      --ok: #4ec98a;
+      --err: #ff8a80;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 16px calc(40px + env(safe-area-inset-bottom));
+  }
+  .wrap { width: 100%; max-width: 440px; }
+
+  header { text-align: center; padding: calc(30px + env(safe-area-inset-top)) 0 20px; }
+  .mark {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 54px; height: 54px; border-radius: 15px;
+    background: var(--navy); color: #fff;
+    font-weight: 700; font-size: 15px; letter-spacing: .5px;
+    margin-bottom: 12px;
+  }
+  h1 { font-size: 19px; margin: 0 0 4px; font-weight: 650; letter-spacing: -.01em; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(16,24,40,.05);
+  }
+
+  .chip {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--green-soft);
+    border-radius: 10px; padding: 11px 13px; margin-bottom: 18px;
+  }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex: none; }
+  .chip .t { font-weight: 600; font-size: 14px; line-height: 1.3; }
+  .chip .d { color: var(--muted); font-size: 12.5px; }
+
+  label { display: block; font-size: 13px; font-weight: 600; margin: 0 0 6px; }
+  input, select {
+    width: 100%; font: inherit; font-size: 16px;
+    padding: 13px 14px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--bg); color: var(--ink);
+    -webkit-appearance: none; appearance: none;
+  }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238a93a2' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px;
+  }
+  input:focus, select:focus { outline: 2px solid var(--navy-2); outline-offset: 1px; border-color: transparent; }
+  .field + .field { margin-top: 14px; }
+
+  button {
+    width: 100%; font: inherit; font-weight: 650; font-size: 16px;
+    padding: 15px; border: 0; border-radius: 11px;
+    background: var(--navy); color: #fff; cursor: pointer;
+    margin-top: 18px; transition: opacity .15s, transform .06s;
+  }
+  button:active { transform: scale(.985); }
+  button[disabled] { opacity: .55; cursor: default; }
+  button.ghost {
+    background: transparent; color: var(--muted);
+    font-weight: 550; font-size: 14px; padding: 10px; margin-top: 10px;
+  }
+  .choices button { margin-top: 10px; text-align: left; padding: 16px; line-height: 1.35; }
+  .choices button .ty { display: block; font-weight: 450; font-size: 13px; opacity: .78; margin-top: 2px; }
+
+  .err { color: var(--err); font-size: 14px; margin-top: 14px; display: none; }
+  .err.show { display: block; }
+
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--muted); font-size: 12.5px; margin: 22px 0 18px;
+  }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+
+  .done { text-align: center; padding: 8px 0 4px; }
+  .tick {
+    width: 66px; height: 66px; border-radius: 50%; background: var(--ok);
+    margin: 4px auto 18px; display: flex; align-items: center; justify-content: center;
+    animation: pop .32s cubic-bezier(.2,1.4,.4,1);
+  }
+  @keyframes pop { from { transform: scale(.4); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+  .tick svg { width: 32px; height: 32px; }
+  .done h2 { font-size: 22px; margin: 0 0 6px; letter-spacing: -.015em; }
+  .done .where { color: var(--muted); font-size: 14.5px; margin: 0 0 20px; }
+  .stat { border-top: 1px solid var(--line); padding-top: 18px; margin-top: 4px; }
+  .stat .big { font-size: 34px; font-weight: 700; letter-spacing: -.03em; line-height: 1; }
+  .stat .cap { color: var(--muted); font-size: 13.5px; margin-top: 7px; }
+  .bar { height: 7px; background: var(--line); border-radius: 4px; margin: 16px 0 9px; overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--green); border-radius: 4px; width: 0; transition: width .6s ease .2s; }
+  .badge {
+    display: inline-block; font-size: 12.5px; font-weight: 650;
+    padding: 5px 11px; border-radius: 999px;
+    background: var(--green-soft); color: var(--green); margin-top: 12px;
+  }
+  .badge.active { background: rgba(29,122,79,.12); color: var(--ok); }
+  .welcome { font-size: 13.5px; color: var(--muted); margin-top: 16px; }
+
+  .empty { text-align: center; padding: 10px 0; }
+  .empty .glyph { font-size: 30px; margin-bottom: 10px; }
+  .empty h2 { font-size: 17px; margin: 0 0 8px; }
+  .empty p { color: var(--muted); font-size: 14.5px; margin: 0; }
+
+  .skel { color: var(--muted); text-align: center; padding: 26px 0; font-size: 14.5px; }
+  .spin {
+    width: 22px; height: 22px; margin: 0 auto 12px;
+    border: 2.5px solid var(--line); border-top-color: var(--navy);
+    border-radius: 50%; animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg) } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="mark">AAPG</div>
+    <h1 id="chapter">AAPG — Colorado School of Mines</h1>
+    <p class="sub" id="dateline"></p>
+  </header>
+
+  <div class="card">
+    <div class="skel" id="v-loading"><div class="spin"></div>Loading…</div>
+
+    <!-- Could not reach the backend -->
+    <div class="empty" id="v-offline" hidden>
+      <div class="glyph">📶</div>
+      <h2>Can't connect right now</h2>
+      <p>Check your signal and try again.</p>
+      <button id="o-retry">Try again</button>
+    </div>
+
+    <!-- No meeting scheduled today -->
+    <div class="empty" id="v-none" hidden>
+      <div class="glyph">📋</div>
+      <h2>No meeting open right now</h2>
+      <p>Check-in opens on meeting days. If we're meeting and this looks wrong, grab an officer.</p>
+      <div class="divider"><span>or</span></div>
+      <p style="margin-bottom:14px;">New to the chapter? Get on the roster now and you're set for every meeting after this.</p>
+      <button id="n-join">Join AAPG Mines</button>
+    </div>
+
+    <!-- Several meetings today -->
+    <div id="v-pick" hidden>
+      <label>Which meeting are you at?</label>
+      <div class="choices" id="pick-list"></div>
+    </div>
+
+    <!-- Remembered device -->
+    <div id="v-quick" hidden>
+      <div class="chip"><span class="dot"></span><span><span class="t" id="q-title"></span><span class="d" id="q-type"></span></span></div>
+      <div style="font-size:15px;margin-bottom:2px;">Check in as</div>
+      <div style="font-weight:650;font-size:17px;word-break:break-all;" id="q-email"></div>
+      <button id="q-go">Check me in</button>
+      <button class="ghost" id="q-other">Not you? Use a different email</button>
+      <div class="err" id="q-err"></div>
+    </div>
+
+    <!-- Email -->
+    <div id="v-email" hidden>
+      <div class="chip"><span class="dot"></span><span><span class="t" id="e-title"></span><span class="d" id="e-type"></span></span></div>
+      <div class="field">
+        <label for="email">Your Mines email</label>
+        <input id="email" type="email" inputmode="email" autocomplete="email"
+               autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="you@mines.edu">
+      </div>
+      <button id="e-go">Continue</button>
+      <div class="err" id="e-err"></div>
+    </div>
+
+    <!-- First-timer -->
+    <div id="v-signup" hidden>
+      <div style="font-weight:650;font-size:17px;margin-bottom:4px;">Welcome — first time here</div>
+      <p class="sub" style="margin-bottom:18px;">Four quick things. You'll never be asked again.</p>
+      <div class="field">
+        <label for="name">Full name</label>
+        <input id="name" type="text" autocomplete="name" placeholder="Jane Doe">
+      </div>
+      <div class="field">
+        <label for="level">Level</label>
+        <select id="level">
+          <option value="">Select…</option>
+          <option>Undergraduate</option>
+          <option>Master's</option>
+          <option>PhD</option>
+          <option>Faculty / Staff</option>
+          <option>Industry guest</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="dept">Department or major</label>
+        <input id="dept" type="text" list="depts" placeholder="Geology &amp; Geological Engineering">
+        <datalist id="depts">
+          <option>Geology &amp; Geological Engineering</option>
+          <option>Geophysics</option>
+          <option>Petroleum Engineering</option>
+          <option>Mining Engineering</option>
+          <option>Civil &amp; Environmental Engineering</option>
+          <option>Chemical &amp; Biological Engineering</option>
+          <option>Mechanical Engineering</option>
+          <option>Economics &amp; Business</option>
+        </datalist>
+      </div>
+      <button id="s-go">Check in</button>
+      <div class="err" id="s-err"></div>
+    </div>
+
+    <!-- Join, no meeting required -->
+    <div id="v-join" hidden>
+      <div style="font-weight:650;font-size:17px;margin-bottom:4px;">Join AAPG Mines</div>
+      <p class="sub" style="margin-bottom:18px;">Four quick things. After this, checking in at a meeting is one tap.</p>
+      <div class="field">
+        <label for="j-email">Your Mines email</label>
+        <input id="j-email" type="email" inputmode="email" autocomplete="email"
+               autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="you@mines.edu">
+      </div>
+      <div class="field">
+        <label for="j-name">Full name</label>
+        <input id="j-name" type="text" autocomplete="name" placeholder="Jane Doe">
+      </div>
+      <div class="field">
+        <label for="j-level">Level</label>
+        <select id="j-level">
+          <option value="">Select…</option>
+          <option>Undergraduate</option>
+          <option>Master's</option>
+          <option>PhD</option>
+          <option>Faculty / Staff</option>
+          <option>Industry guest</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="j-dept">Department or major</label>
+        <input id="j-dept" type="text" list="depts" placeholder="Geology &amp; Geological Engineering">
+      </div>
+      <button id="j-go">Join</button>
+      <button class="ghost" id="j-back">Never mind</button>
+      <div class="err" id="j-err"></div>
+    </div>
+
+    <!-- Checked in -->
+    <div class="done" id="v-done" hidden>
+      <div class="tick"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5.2 5.2L20 7" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h2 id="d-greet"></h2>
+      <p class="where" id="d-where"></p>
+      <div class="stat">
+        <div class="big" id="d-count"></div>
+        <div class="cap" id="d-cap"></div>
+        <div class="bar"><i id="d-bar"></i></div>
+        <div class="cap" id="d-pct"></div>
+        <div id="d-badge"></div>
+      </div>
+      <div class="welcome" id="d-welcome" hidden>You're on the roster now — next time it's one tap.</div>
+    </div>
+
+    <!-- Joined -->
+    <div class="done" id="v-joined" hidden>
+      <div class="tick"><svg viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5.2 5.2L20 7" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h2 id="jd-greet"></h2>
+      <p class="where" id="jd-note"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* The Apps Script deployment that owns the spreadsheet. Only the four
+   member-facing actions are reachable here; nothing passcode-gated is. */
+var API = "https://script.google.com/macros/s/AKfycbylvTtEErgTYNkqHl6Fyi8pC16VCpdYshpL76-zbTyXIwdP10-PmF-9PlpxUdQer999/exec";
+
+var meeting = null, pendingEmail = '';
+
+function $(id) { return document.getElementById(id); }
+
+var VIEWS = ['v-loading','v-offline','v-none','v-pick','v-quick','v-email',
+             'v-signup','v-join','v-done','v-joined'];
+function show(id) {
+  VIEWS.forEach(function (v) { var el = $(v); if (el) el.hidden = (v !== id); });
+}
+
+/* text/plain keeps this a CORS simple request — no preflight, which Apps
+   Script cannot answer. */
+function call(action, payload) {
+  var body = Object.assign({ action: action }, payload || {});
+  return fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(body)
+  }).then(function (r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+
+function remembered() { try { return localStorage.getItem('aapg_email') || ''; } catch (e) { return ''; } }
+function remember(e) { try { localStorage.setItem('aapg_email', e); } catch (x) {} }
+function forget() { try { localStorage.removeItem('aapg_email'); } catch (x) {} }
+
+function err(id, msg) { var el = $(id); el.textContent = msg; el.classList.add('show'); }
+function clearErr(id) { $(id).classList.remove('show'); }
+function valid(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+
+function fillChip(p) {
+  $(p + '-title').textContent = meeting.title;
+  $(p + '-type').textContent = meeting.type ? ' · ' + meeting.type : '';
+}
+
+/* ---------------- boot ---------------- */
+function boot() {
+  show('v-loading');
+  call('context').then(function (res) {
+    if (res.chapterName) $('chapter').textContent = res.chapterName;
+    $('dateline').textContent = res.today || '';
+
+    var list = res.meetings || [];
+    if (!list.length) { show('v-none'); return; }
+    if (list.length > 1) {
+      var host = $('pick-list');
+      host.innerHTML = '';
+      list.forEach(function (m) {
+        var b = document.createElement('button');
+        b.appendChild(document.createTextNode(m.title));
+        if (m.type) {
+          var s = document.createElement('span');
+          s.className = 'ty'; s.textContent = m.type;
+          b.appendChild(s);
+        }
+        b.onclick = function () { meeting = m; startFlow(); };
+        host.appendChild(b);
+      });
+      show('v-pick');
+      return;
+    }
+    meeting = list[0];
+    startFlow();
+  }).catch(function () { show('v-offline'); });
+}
+$('o-retry').onclick = boot;
+boot();
+
+function startFlow() {
+  var saved = remembered();
+  if (saved) {
+    fillChip('q');
+    $('q-email').textContent = saved;
+    clearErr('q-err');
+    show('v-quick');
+  } else {
+    fillChip('e');
+    show('v-email');
+    setTimeout(function () { $('email').focus(); }, 120);
+  }
+}
+
+/* ---------------- one-tap ---------------- */
+$('q-go').onclick = function () {
+  var btn = this;
+  btn.disabled = true; btn.textContent = 'Checking in…';
+  clearErr('q-err');
+  submit({ email: remembered(), meetingId: meeting.id }, btn, 'Check me in', 'q-err');
+};
+$('q-other').onclick = function () {
+  forget(); fillChip('e'); show('v-email');
+  setTimeout(function () { $('email').focus(); }, 120);
+};
+
+/* ---------------- email ---------------- */
+$('email').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('e-go').click(); });
+$('e-go').onclick = function () {
+  clearErr('e-err');
+  var email = $('email').value.trim().toLowerCase();
+  if (!valid(email)) { err('e-err', 'Please enter a valid email address.'); return; }
+  var btn = this;
+  btn.disabled = true; btn.textContent = 'Checking…';
+  call('lookup', { email: email }).then(function (res) {
+    btn.disabled = false; btn.textContent = 'Continue';
+    pendingEmail = email;
+    if (res.found) {
+      btn.disabled = true; btn.textContent = 'Checking in…';
+      submit({ email: email, meetingId: meeting.id }, btn, 'Continue', 'e-err');
+    } else {
+      show('v-signup');
+      setTimeout(function () { $('name').focus(); }, 120);
+    }
+  }).catch(function () {
+    btn.disabled = false; btn.textContent = 'Continue';
+    err('e-err', 'Could not connect. Please try again.');
+  });
+};
+
+/* ---------------- first-timer ---------------- */
+$('s-go').onclick = function () {
+  clearErr('s-err');
+  var name = $('name').value.trim();
+  if (!name) { err('s-err', 'Please enter your name.'); return; }
+  var btn = this;
+  btn.disabled = true; btn.textContent = 'Checking in…';
+  submit({
+    email: pendingEmail, meetingId: meeting.id, name: name,
+    level: $('level').value, department: $('dept').value.trim()
+  }, btn, 'Check in', 's-err');
+};
+
+function submit(payload, btn, label, errId) {
+  call('checkin', payload).then(function (res) {
+    if (!res.ok) {
+      btn.disabled = false; btn.textContent = label;
+      err(errId, res.error || 'Something went wrong.');
+      return;
+    }
+    remember(payload.email);
+    renderDone(res);
+  }).catch(function () {
+    btn.disabled = false; btn.textContent = label;
+    err(errId, 'Could not connect. Please try again.');
+  });
+}
+
+function renderDone(r) {
+  $('d-greet').textContent = r.alreadyCheckedIn
+    ? ("You're already checked in, " + r.firstName)
+    : ('Checked in, ' + r.firstName + '!');
+  $('d-where').textContent = r.meetingTitle;
+  $('d-count').textContent = r.attended + ' of ' + r.held;
+  $('d-cap').textContent = 'meetings attended this ' +
+    (r.term ? r.term.split(' ')[0].toLowerCase() : 'term');
+  $('d-pct').textContent = r.pct + '% attendance';
+  setTimeout(function () { $('d-bar').style.width = Math.min(100, r.pct) + '%'; }, 60);
+
+  var badge = $('d-badge');
+  badge.innerHTML = '';
+  var span = document.createElement('span');
+  if (r.isActive) {
+    span.className = 'badge active';
+    span.textContent = '✓ Active member';
+  } else {
+    span.className = 'badge';
+    var need = Math.max(1, Math.ceil((r.threshold / 100) * r.held - r.attended));
+    span.textContent = need + ' more to reach active status';
+  }
+  badge.appendChild(span);
+  $('d-welcome').hidden = !r.isNewMember;
+  show('v-done');
+}
+
+/* ---------------- join, no meeting ---------------- */
+$('n-join').onclick = function () {
+  show('v-join');
+  var saved = remembered();
+  if (saved) $('j-email').value = saved;
+  setTimeout(function () { $(saved ? 'j-name' : 'j-email').focus(); }, 120);
+};
+$('j-back').onclick = function () { show('v-none'); };
+
+$('j-go').onclick = function () {
+  clearErr('j-err');
+  var email = $('j-email').value.trim().toLowerCase();
+  var name = $('j-name').value.trim();
+  if (!valid(email)) { err('j-err', 'Please enter a valid email address.'); return; }
+  if (!name) { err('j-err', 'Please enter your name.'); return; }
+
+  var btn = this;
+  btn.disabled = true; btn.textContent = 'Joining…';
+  call('signup', {
+    email: email, name: name,
+    level: $('j-level').value, department: $('j-dept').value.trim()
+  }).then(function (res) {
+    btn.disabled = false; btn.textContent = 'Join';
+    if (!res.ok) { err('j-err', res.error); return; }
+    remember(email);
+    $('jd-greet').textContent = res.alreadyMember
+      ? ("You're already on the roster, " + res.firstName)
+      : ("You're in, " + res.firstName + '!');
+    $('jd-note').textContent = res.alreadyMember
+      ? 'Nothing more to do — just scan the code at the next meeting.'
+      : 'Scan this code at any meeting and you’ll be checked in with one tap.';
+    show('v-joined');
+  }).catch(function () {
+    btn.disabled = false; btn.textContent = 'Join';
+    err('j-err', 'Could not connect. Please try again.');
+  });
+};
+</script>
+</body>
+</html>
