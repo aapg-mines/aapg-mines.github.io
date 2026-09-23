@@ -309,15 +309,49 @@ var ACTION_MAP = {
 };
 
 /* text/plain keeps this a CORS simple request, so no preflight is sent. */
-function apiCall(action, payload) {
-  return fetch(API, {
+
+/* Apps Script drops the occasional request. Retrying is only safe for calls
+ * that change nothing — a retried addMeeting would create the meeting twice,
+ * so writes get one attempt and an honest error. A wrong passcode is
+ * deliberately slowed server-side, hence the generous timeout. */
+var RETRYABLE = { status: 1, dashboard: 1 };
+var CALL_TIMEOUT_MS = 20000;
+var CALL_BACKOFF_MS = [600, 1500];
+
+function apiCallOnce(action, payload) {
+  var opts = {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(Object.assign({ action: action }, payload))
-  }).then(function (r) {
+  };
+  var timer = null;
+  if (typeof AbortController === 'function') {
+    var ac = new AbortController();
+    opts.signal = ac.signal;
+    timer = setTimeout(function () { ac.abort(); }, CALL_TIMEOUT_MS);
+  }
+  return fetch(API, opts).then(function (r) {
+    if (timer) clearTimeout(timer);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return r.json();
+  }, function (e) {
+    if (timer) clearTimeout(timer);
+    throw e;
   });
+}
+
+function apiCall(action, payload) {
+  var max = RETRYABLE[action] ? 3 : 1;
+  var attempt = 0;
+  function go() {
+    attempt++;
+    return apiCallOnce(action, payload).catch(function (e) {
+      if (attempt >= max) throw e;
+      var wait = CALL_BACKOFF_MS[attempt - 1] || 1500;
+      return new Promise(function (res) { setTimeout(res, wait); }).then(go);
+    });
+  }
+  return go();
 }
 
 function Runner() { this._ok = null; this._fail = null; }
@@ -385,10 +419,24 @@ $('gate-go').onclick = function () {
     PASS = v;
     google.script.run
       .withSuccessHandler(function (d) { sessionStorage.setItem('aapg_pass', v); render(d); })
-      .withFailureHandler(function () { PASS = ''; gateErr('That passcode did not work.'); })
+      .withFailureHandler(function (e) {
+        PASS = '';
+        gateErr(isBadPasscode(e) ? 'That passcode did not work.' : UNREACHABLE);
+      })
       .api_getDashboard(v);
   }
 };
+
+/* A failed request and a rejected passcode are different problems and must not
+   share a message. Telling someone their correct passcode is wrong sends them
+   hunting for a password that was never the issue. */
+var UNREACHABLE = 'Could not reach the server. Your passcode may be fine — ' +
+                  'check your connection and try again.';
+function isBadPasscode(e) {
+  var m = String((e && e.message) || e || '');
+  return m.indexOf('BAD_PASSCODE') !== -1 || m.indexOf('NO_PASSCODE') !== -1;
+}
+
 function gateErr(t) {
   var n = $('gate-err');
   n.textContent = t; n.style.display = 'block';
@@ -397,7 +445,8 @@ function gateErr(t) {
 function load() {
   google.script.run
     .withSuccessHandler(render)
-    .withFailureHandler(function () {
+    .withFailureHandler(function (e) {
+      if (!isBadPasscode(e)) { gateErr(UNREACHABLE); $('gate').style.display = ''; return; }
       PASS = ''; sessionStorage.removeItem('aapg_pass');
       $('app').hidden = true; $('gate').style.display = '';
       gateErr('Session expired — please enter the passcode again.');
