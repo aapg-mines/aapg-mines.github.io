@@ -257,13 +257,28 @@
       </div>
       <div class="msg" id="s-msg"></div>
     </div>
-    <div class="card">
+    <div class="card" id="card-passcode">
       <h2>Change passcode</h2>
       <div class="grid g2">
         <div><label for="p-new">New passcode</label><input id="p-new" type="password"></div>
         <div style="display:flex;align-items:flex-end"><button class="btn sec" id="p-save">Update passcode</button></div>
       </div>
       <div class="msg" id="p-msg"></div>
+    </div>
+    <div class="card" id="card-open" hidden>
+      <h2>This dashboard is open</h2>
+      <p class="muted" style="margin:0 0 10px">
+        The passcode is turned off, so anyone with the link has everything on
+        this page — every member's name and email, and the buttons that remove
+        members, delete meetings and change these settings. Treat the link
+        itself as the only thing standing in the way.
+      </p>
+      <p class="muted" style="margin:0">
+        To turn protection back on: open the Google Sheet, go to the
+        <strong>Config</strong> tab, and set <code>requirePasscode</code> to
+        <code>1</code>. The old passcode starts working again immediately —
+        nothing to re-set, no redeploy.
+      </p>
     </div>
   </section>
 </div>
@@ -273,6 +288,7 @@
 
 <script>
 var PASS = '';
+var OPEN_MODE = false;        // true when the passcode is switched off
 var D = null;                 // dashboard payload
 var sortState = { roster: { key: 'pct', dir: -1 } };
 /* ------------------------------------------------------------------ *
@@ -290,7 +306,7 @@ var sortState = { roster: { key: 'pct', dir: -1 } };
  * ------------------------------------------------------------------ */
 var API = "https://script.google.com/macros/s/AKfycbylvTtEErgTYNkqHl6Fyi8pC16VCpdYshpL76-zbTyXIwdP10-PmF-9PlpxUdQer999/exec";
 var WEB_URL = "https://aapg-mines.github.io/checkin/";
-var DASH_URL = "https://aapg-mines.github.io/checkin/dashboard/";
+var DASH_URL = "https://aapg-mines.github.io/dashboard/";
 
 var ACTION_MAP = {
   api_dashboardStatus:    function ()             { return ['status', {}]; },
@@ -395,6 +411,23 @@ function msg(id, text, kind) {
 /* ------------------------- gate ------------------------- */
 
 google.script.run.withSuccessHandler(function (s) {
+  /* Protection can be switched off from the Config tab. When it is, there is
+     nothing to ask for — go straight in, and swap the "change passcode" card
+     for an honest description of what open means. */
+  if (s.passcodeRequired === false) {
+    OPEN_MODE = true;
+    $('card-passcode').hidden = true;
+    $('card-open').hidden = false;
+    /* No passcode to collect, so the gate becomes a plain retry screen for
+       the times Apps Script drops the request. */
+    $('pass').style.display = 'none';
+    $('gate-p').textContent = 'Loading…';
+    $('gate-go').textContent = 'Try again';
+    $('gate-go').onclick = function () { $('gate-err').style.display = 'none'; load(); };
+    PASS = '';
+    load();
+    return;
+  }
   if (!s.passcodeSet) {
     $('gate-h').textContent = 'Set up your dashboard';
     $('gate-p').textContent = 'Choose a passcode. You will use it to open this dashboard from any device.';
@@ -432,6 +465,7 @@ $('gate-go').onclick = function () {
    hunting for a password that was never the issue. */
 var UNREACHABLE = 'Could not reach the server. Your passcode may be fine — ' +
                   'check your connection and try again.';
+var UNREACHABLE_OPEN = 'Could not reach the server. Check your connection and try again.';
 function isBadPasscode(e) {
   var m = String((e && e.message) || e || '');
   return m.indexOf('BAD_PASSCODE') !== -1 || m.indexOf('NO_PASSCODE') !== -1;
@@ -446,6 +480,7 @@ function load() {
   google.script.run
     .withSuccessHandler(render)
     .withFailureHandler(function (e) {
+      if (OPEN_MODE) { $('app').hidden = true; $('gate').style.display = ''; gateErr(UNREACHABLE_OPEN); return; }
       if (!isBadPasscode(e)) { gateErr(UNREACHABLE); $('gate').style.display = ''; return; }
       PASS = ''; sessionStorage.removeItem('aapg_pass');
       $('app').hidden = true; $('gate').style.display = '';
@@ -1173,7 +1208,9 @@ $('btn-links').onclick = function () {
   };
   row.appendChild(inp); row.appendChild(cp);
   box.appendChild(row);
-  box.appendChild(el('p', 's', 'Dashboard link (keep this one to yourself): ' + DASH_URL));
+  box.appendChild(el('p', 's', (OPEN_MODE
+    ? 'Dashboard link — this one is NOT passcode-protected, so only share it with officers: '
+    : 'Dashboard link (keep this one to yourself): ') + DASH_URL));
   var cl = el('button', 'btn sec', 'Close');
   cl.onclick = closeModal;
   box.appendChild(cl);
