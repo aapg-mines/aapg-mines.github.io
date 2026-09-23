@@ -327,16 +327,50 @@ function show(id) {
 
 /* text/plain keeps this a CORS simple request — no preflight, which Apps
    Script cannot answer. */
-function call(action, payload) {
+var CALL_TIMEOUT_MS = 10000;
+var CALL_ATTEMPTS = 3;
+var CALL_BACKOFF_MS = [500, 1200];
+
+function callOnce(action, payload) {
   var body = Object.assign({ action: action }, payload || {});
-  return fetch(API, {
+  var opts = {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(body)
-  }).then(function (r) {
+  };
+  /* Without this a stalled request leaves the page on "Loading…" forever,
+     which is worse than an honest failure the member can retry. */
+  var timer = null;
+  if (typeof AbortController === 'function') {
+    var ac = new AbortController();
+    opts.signal = ac.signal;
+    timer = setTimeout(function () { ac.abort(); }, CALL_TIMEOUT_MS);
+  }
+  return fetch(API, opts).then(function (r) {
+    if (timer) clearTimeout(timer);
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return r.json();
+  }, function (e) {
+    if (timer) clearTimeout(timer);
+    throw e;
   });
+}
+
+/* Apps Script drops the occasional request — usually a redirect the browser
+   refuses to follow — and a single failure used to send the member straight
+   to "Can't connect". Every action here is idempotent server-side (check-in
+   and sign-up both de-duplicate on email), so retrying is safe. */
+function call(action, payload) {
+  var attempt = 0;
+  function go() {
+    attempt++;
+    return callOnce(action, payload).catch(function (e) {
+      if (attempt >= CALL_ATTEMPTS) throw e;
+      var wait = CALL_BACKOFF_MS[attempt - 1] || 1200;
+      return new Promise(function (res) { setTimeout(res, wait); }).then(go);
+    });
+  }
+  return go();
 }
 
 function remembered() { try { return localStorage.getItem('aapg_email') || ''; } catch (e) { return ''; } }
