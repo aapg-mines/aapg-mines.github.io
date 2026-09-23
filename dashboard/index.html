@@ -476,10 +476,38 @@ function gateErr(t) {
   n.textContent = t; n.style.display = 'block';
 }
 
+/**
+ * A slow load used to look identical to a broken one.
+ *
+ * Apps Script can take a few seconds on a good day, and when it drops a
+ * request the retries push that past half a minute. Without these the screen
+ * just says "Loading…" the whole time, which reads as hung. Saying what is
+ * happening costs nothing and stops people refreshing into a worse state.
+ */
+var LOAD_TIMERS = [];
+function clearLoadProgress() {
+  LOAD_TIMERS.forEach(clearTimeout);
+  LOAD_TIMERS = [];
+}
+function startLoadProgress() {
+  if (!OPEN_MODE) return;              // the passcode gate has its own wording
+  clearLoadProgress();
+  $('gate-p').textContent = 'Loading…';
+  LOAD_TIMERS.push(setTimeout(function () {
+    $('gate-p').textContent = 'Still loading — the server is being slow.';
+  }, 6000));
+  LOAD_TIMERS.push(setTimeout(function () {
+    $('gate-p').textContent = 'Still trying. Apps Script drops a request now and '
+      + 'then; this retries on its own, so give it a few more seconds.';
+  }, 16000));
+}
+
 function load() {
+  startLoadProgress();
   google.script.run
-    .withSuccessHandler(render)
+    .withSuccessHandler(function (d) { clearLoadProgress(); render(d); })
     .withFailureHandler(function (e) {
+      clearLoadProgress();
       if (OPEN_MODE) { $('app').hidden = true; $('gate').style.display = ''; gateErr(UNREACHABLE_OPEN); return; }
       if (!isBadPasscode(e)) { gateErr(UNREACHABLE); $('gate').style.display = ''; return; }
       PASS = ''; sessionStorage.removeItem('aapg_pass');
